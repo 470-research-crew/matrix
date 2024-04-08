@@ -1,136 +1,292 @@
-#include <iostream>
-#include <cstdlib>
-#include <pthread.h>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <pthread.h>
+#include <vector>
 
 #define REAL double
-#define NUM_THREADS 4 // Adjust based on your system capabilities
+
+#include "timer.h"
+
+// Uncomment this line to enable the alternative back substitution method
+// #define USE_COLUMN_BACKSUB
+
+// Linear system: Ax = b (A is n x n matrix; b and x are n x 1 vectors)
+int n;
+REAL *A;
+REAL *x;
+REAL *b;
+
+// Enable/disable debugging output (don't enable for large matrix sizes!)
+bool debug_mode = false;
+
+// Enable/disable triangular mode (to skip the Gaussian elimination phase)
+bool triangular_mode = false;
+
+int numThreads;
 
 struct ThreadData {
-    int thread_id;
-    REAL* A;
-    REAL* b;
-    REAL* x;
-    int n;
-    pthread_barrier_t *barrier; // For synchronization between threads
+    int startRow;
+    int endRow;
+    int pivot;
 };
 
-// Function prototypes
-void* gaussianEliminationThread(void* threadarg);
-void* backSubstitutionThread(void* threadarg);
-void initializeSystem(REAL* A, REAL* b, int n);
+void rand_system() {
+    A = new REAL[n*n];
+    b = new REAL[n];
+    x = new REAL[n];
 
-// Gaussian elimination thread function
-void* gaussianEliminationThread(void* threadarg) {
-    ThreadData* data = (ThreadData*) threadarg;
-    int tid = data->thread_id;
-    REAL* A = data->A;
-    REAL* b = data->b;
-    int n = data->n;
+    if (!A || !b || !x) {
+        std::cerr << "Unable to allocate memory for linear system\n";
+        exit(EXIT_FAILURE);
+    }
 
-    // Example operation (simplified)
-    for (int pivot = 0; pivot < n - 1; pivot++) {
-        pthread_barrier_wait(data->barrier); // Synchronize at each step of elimination
-        for (int row = pivot + 1 + tid; row < n; row += NUM_THREADS) {
-            REAL factor = A[row * n + pivot] / A[pivot * n + pivot];
-            for (int col = pivot; col < n; col++) {
-                A[row * n + col] -= A[pivot * n + col] * factor;
+    unsigned long seed = 0;
+
+    for (int row = 0; row < n; ++row) {
+        int col = triangular_mode ? row : 0;
+        for (; col < n; ++col) {
+            if (row != col) {
+                seed = (1103515245 * seed + 12345) % (1UL << 31);
+                A[row*n + col] = static_cast<REAL>(seed) / static_cast<REAL>(ULONG_MAX);
+            } else {
+                A[row*n + col] = n / 10.0;
             }
-            b[row] -= b[pivot] * factor;
         }
+    }
+
+    for (int row = 0; row < n; ++row) {
+        b[row] = 0.0;
+        for (int col = 0; col < n; ++col) {
+            b[row] += A[row*n + col];
+        }
+    }
+}
+
+void read_system(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        std::cerr << "Unable to open file \"" << filename << "\"\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if (fscanf(file, "%d\n", &n) != 1) {
+        std::cerr << "Invalid matrix file format\n";
+        exit(EXIT_FAILURE);
+    }
+
+    A = new REAL[n*n];
+    b = new REAL[n];
+    x = new REAL[n];
+
+    if (!A || !b || !x) {
+        std::cerr << "Unable to allocate memory for linear system\n";
+        exit(EXIT_FAILURE);
+    }
+
+    for (int row = 0; row < n; ++row) {
+        for (int col = 0; col < n; ++col) {
+            if (fscanf(file, "%lf", &A[row*n + col]) != 1) {
+                std::cerr << "Invalid matrix file format\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        if (fscanf(file, "%lf", &b[row]) != 1) {
+            std::cerr << "Invalid matrix file format\n";
+            exit(EXIT_FAILURE);
+        }
+        x[row] = 0.0;
+    }
+
+    fclose(file);
+}
+
+void *gaussian_elimination_thread(void *arg) {
+    ThreadData *data = static_cast<ThreadData*>(arg);
+    int startRow = data->startRow;
+    int endRow = data->endRow;
+    int pivot = data->pivot;
+
+    for (int row = startRow; row < endRow; ++row) {
+        REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
+        A[row*n + pivot] = 0.0;
+        for (int col = pivot + 1; col < n; ++col) {
+            A[row*n + col] -= A[pivot*n + col] * coeff;
+        }
+        b[row] -= b[pivot] * coeff;
     }
 
     pthread_exit(NULL);
 }
 
-// Back substitution thread function
-void* backSubstitutionThread(void* threadarg) {
-    ThreadData* data = (ThreadData*) threadarg;
-    int tid = data->thread_id;
-    REAL* A = data->A;
-    REAL* b = data->b;
-    REAL* x = data->x;
-    int n = data->n;
+void gaussian_elimination() {
+    pthread_t *threads = new pthread_t[numThreads];
+    ThreadData *data = new ThreadData[numThreads];
 
-    // Back substitution (only first thread computes, for simplicity)
-    if (tid == 0) {
-        for (int row = n - 1; row >= 0; row--) {
-            x[row] = b[row];
-            for (int col = n - 1; col > row; col--) {
-                x[row] -= A[row * n + col] * x[col];
+    for (int pivot = 0; pivot < n; ++pivot) {
+        for (int t = 0; t < numThreads; ++t) {
+            data[t].startRow = pivot + 1 + (n - pivot - 1) / numThreads * t;
+            data[t].endRow = pivot + 1 + (n - pivot - 1) / numThreads * (t + 1);
+            data[t].pivot = pivot;
+
+            if (pthread_create(&threads[t], NULL, gaussian_elimination_thread, &data[t])) {
+                std::cerr << "Error creating thread\n";
+                exit(EXIT_FAILURE);
             }
-            x[row] /= A[row * n + row];
+        }
+
+        for (int t = 0; t < numThreads; ++t) {
+            pthread_join(threads[t], NULL);
         }
     }
 
-    pthread_exit(NULL);
+    delete[] threads;
+    delete[] data;
 }
 
-// Initialize system (A matrix and b vector)
-void initializeSystem(REAL* A, REAL* b, int n) {
-    // Simplified initialization for demonstration
-    for (int i = 0; i < n * n; i++) {
-        A[i] = static_cast<REAL>(rand()) / RAND_MAX;
-    }
-    for (int i = 0; i < n; i++) {
-        b[i] = static_cast<REAL>(rand()) / RAND_MAX;
+void back_substitution_row() {
+    REAL tmp;
+    for (int row = n-1; row >= 0; --row) {
+        tmp = b[row];
+        for (int col = row + 1; col < n; ++col) {
+            tmp -= A[row*n + col] * x[col];
+        }
+        x[row] = tmp / A[row*n + row];
     }
 }
 
-int main() {
-    int n = 10; // Example size of the system
-    REAL *A = new REAL[n*n];
-    REAL *b = new REAL[n];
-    REAL *x = new REAL[n];
-    pthread_t threads[NUM_THREADS];
-    ThreadData thread_data[NUM_THREADS];
-    pthread_barrier_t barrier;
+void back_substitution_column() {
+    for (int row = 0; row < n; ++row) {
+        x[row] = b[row];
+    }
+    for (int col = n-1; col >= 0; --col) {
+        x[col] /= A[col*n + col];
+        for (int row = 0; row < col; ++row) {
+            x[row] -= A[row*n + col] * x[col];
+        }
+    }
+}
 
-    initializeSystem(A, b, n);
+REAL find_max_error() {
+    REAL max_error = 0.0;
+    for (int row = 0; row < n; ++row) {
+        REAL error = std::fabs(x[row] - 1.0);
+        if (error > max_error) {
+            max_error = error;
+        }
+    }
+    return max_error;
+}
 
-    // Initialize barrier
-    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
+void print_matrix(REAL *matrix, int rows, int cols) {
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < cols; ++col) {
+            printf("%8.1e ", matrix[row*cols + col]);
+        }
+        printf("\n");
+    }
+}
 
-    // Create threads for Gaussian elimination
-    for(int i = 0; i < NUM_THREADS; i++ ) {
-        thread_data[i] = {i, A, b, x, n, &barrier};
-        int rc = pthread_create(&threads[i], NULL, gaussianEliminationThread, (void *)&thread_data[i]);
-        if (rc) {
-            std::cerr << "Error: unable to create thread, " << rc << std::endl;
-            exit(-1);
+int main(int argc, char *argv[]) {
+    numThreads = 4; // Default number of threads
+
+    int option;
+    while ((option = getopt(argc, argv, "dt")) != -1) {
+        switch (option) {
+            case 'd':
+                debug_mode = true;
+                break;
+            case 't':
+                triangular_mode = true;
+                break;
+            default:
+                std::cerr << "Usage: " << argv[0] << " [-dt] <file|size> [numThreads]\n";
+                exit(EXIT_FAILURE);
         }
     }
 
-    // Wait for Gaussian elimination threads to complete
-    for(int i = 0; i < NUM_THREADS; i++ ) {
-        pthread_join(threads[i], NULL);
-    }
-
-    // Create threads for back substitution
-    for(int i = 0; i < NUM_THREADS; i++ ) {
-        int rc = pthread_create(&threads[i], NULL, backSubstitutionThread, (void *)&thread_data[i]);
-        if (rc) {
-            std::cerr << "Error: unable to create thread, " << rc << std::endl;
-            exit(-1);
+    if (argc - optind == 2) {
+        char *endptr;
+        long val = std::strtol(argv[argc - 1], &endptr, 10);
+        if ((val == LONG_MAX || val == LONG_MIN) && errno == ERANGE) {
+            perror("strtol");
+            exit(EXIT_FAILURE);
         }
+        if (endptr == argv[argc - 1]) {
+            std::cerr << "No digits were found\n";
+            exit(EXIT_FAILURE);
+        }
+        if (*endptr != '\0') {
+            std::cerr << "Further characters after number: " << endptr << "\n";
+            exit(EXIT_FAILURE);
+        }
+        numThreads = static_cast<int>(val);
+        if (numThreads <= 0) {
+            std::cerr << "Invalid number of threads: " << val << "\n";
+            exit(EXIT_FAILURE);
+        }
+    } else if (argc - optind != 1) {
+        std::cerr << "Usage: " << argv[0] << " [-dt] <file|size> [numThreads]\n";
+        exit(EXIT_FAILURE);
     }
 
-    // Wait for back substitution threads to complete
-    for(int i = 0; i < NUM_THREADS; i++ ) {
-        pthread_join(threads[i], NULL);
+    // Initialize linear system
+    START_TIMER(init)
+    if (isdigit(argv[optind][0])) {
+        n = std::atoi(argv[optind]);
+        rand_system();
+    } else {
+        read_system(argv[optind]);
+    }
+    STOP_TIMER(init)
+
+    // Optionally print the original matrices for debugging
+    if (debug_mode) {
+        std::cout << "Original A = \n";
+        print_matrix(A, n, n);
+        std::cout << "Original b = \n";
+        print_matrix(b, n, 1);
     }
 
-    // Print results for verification (optional)
-    std::cout << "Solution Vector x: \n";
-    for (int i = 0; i < n; i++) {
-        std::cout << "x[" << i << "] = " << x[i] << "\n";
+    // Perform Gaussian elimination
+    START_TIMER(gaus)
+    if (!triangular_mode) {
+        gaussian_elimination();
     }
+    STOP_TIMER(gaus)
+
+    // Perform backwards substitution
+    START_TIMER(bsub)
+#ifndef USE_COLUMN_BACKSUB
+    back_substitution_row();
+#else
+    back_substitution_column();
+#endif
+    STOP_TIMER(bsub)
+
+    // Optionally print the resulting matrices for debugging
+    if (debug_mode) {
+        std::cout << "Triangular A = \n";
+        print_matrix(A, n, n);
+        std::cout << "Updated b = \n";
+        print_matrix(b, n, 1);
+        std::cout << "Solution x = \n";
+        print_matrix(x, n, 1);
+    }
+
+    // Print results
+    std::cout << "Nthreads=" << numThreads << "  ERR=" << find_max_error()
+              << "  INIT: " << GET_TIMER(init) << "s  GAUS: " << GET_TIMER(gaus) 
+              << "s  BSUB: " << GET_TIMER(bsub) << "s\n";
 
     // Cleanup
     delete[] A;
     delete[] b;
     delete[] x;
-    pthread_barrier_destroy(&barrier);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
+
