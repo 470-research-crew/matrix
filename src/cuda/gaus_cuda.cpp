@@ -11,7 +11,7 @@ __global__ void gaussianEliminationKernel(REAL* A, REAL* b, int n) {
 
     if (row > pivot && row < n) {
         REAL coeff = A[row * n + pivot] / A[pivot * n + pivot];
-        for (int col = pivot; col < n; col++) { // Including pivot for simplicity, though it's technically not needed
+        for (int col = pivot; col < n; col++) {
             A[row * n + col] -= A[pivot * n + col] * coeff;
         }
         b[row] -= b[pivot] * coeff;
@@ -34,7 +34,7 @@ __global__ void initializeSystemKernel(REAL* A, REAL* b, int n, bool triangular_
                 A[idx] = (row + col) % 5 + 1;
             }
         } else {
-            A[idx] = 0.0; // Ensure lower triangular part is zero if triangular_mode is true
+            A[idx] = 0.0; 
         }
     }
 
@@ -64,12 +64,10 @@ void gaussian_elimination(REAL* d_A, REAL* d_b, int n) {
 }
 
 int main() {
-    // Example usage
     int n = 10; // Matrix size
     size_t bytes = n * n * sizeof(REAL);
     REAL* h_A = (REAL*)malloc(bytes);
     REAL* h_b = (REAL*)malloc(n * sizeof(REAL));
-    // Initialize h_A and h_b...
 
     REAL* d_A; cudaMalloc(&d_A, bytes);
     REAL* d_b; cudaMalloc(&d_b, n * sizeof(REAL));
