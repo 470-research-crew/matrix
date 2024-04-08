@@ -51,6 +51,25 @@ __global__ void backSubstitutionKernel(REAL* A, REAL* b, REAL* x, int n) {
     }
 }
 
+__device__ void atomicMaxDouble(double* address, double val) {
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, __double_as_longlong(fmax(val, __longlong_as_double(assumed))));
+    } while (assumed != old);
+}
+
+
+__global__ void calculateError(REAL* x, REAL* error, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        REAL localError = fabs(x[idx] - 1.0); 
+        atomicMaxDouble(error, localError);
+    }
+}
+
+
 void gaussian_elimination(REAL* d_A, REAL* d_b, int n) {
     dim3 blocks((n + 15) / 16, n);
     dim3 threads(16, 1);
@@ -58,27 +77,60 @@ void gaussian_elimination(REAL* d_A, REAL* d_b, int n) {
     cudaDeviceSynchronize();
 }
 
-int main() {
-    int n = 10;
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <size>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char *pEnd;
+    long int li = strtol(argv[1], &pEnd, 10);
+    int n = (int)li;
+    if (*pEnd != '\0') {
+        fprintf(stderr, "Invalid number: %s\n", argv[1]);
+        return EXIT_FAILURE;
+    }
+
     size_t bytes = n * n * sizeof(REAL);
     REAL* h_A = (REAL*)malloc(bytes);
     REAL* h_b = (REAL*)malloc(n * sizeof(REAL));
+    REAL* h_x = (REAL*)malloc(n * sizeof(REAL));
 
     REAL* d_A; cudaMalloc(&d_A, bytes);
     REAL* d_b; cudaMalloc(&d_b, n * sizeof(REAL));
+    REAL* d_x; cudaMalloc(&d_x, n * sizeof(REAL));
 
-    cudaMemcpy(d_A, h_A, bytes, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_b, h_b, n * sizeof(REAL), cudaMemcpyHostToDevice);
+    // Initialize matrices A and b
+    dim3 initBlocks((n * n + 1023) / 1024);
+    dim3 initThreads(1024);
+    initializeSystemKernel<<<initBlocks, initThreads>>>(d_A, d_b, n, 0);
+    cudaDeviceSynchronize();
 
-    gaussian_elimination(d_A, d_b, n);
+    // Perform Gaussian elimination
+    gaussian_elimination(d_A, d_b, n); // Ensure this function is updated to include the back substitution
 
-    cudaMemcpy(h_A, d_A, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_b, d_b, n * sizeof(REAL), cudaMemcpyDeviceToHost);
+    // Copy back the result to host
+    cudaMemcpy(h_x, d_x, n * sizeof(REAL), cudaMemcpyDeviceToHost);
 
+    // Calculate error on the device
+    REAL* d_error; cudaMalloc(&d_error, sizeof(REAL));
+    cudaMemset(d_error, 0, sizeof(REAL));
+    calculateError<<<initBlocks, initThreads>>>(d_x, d_error, n);
+    cudaDeviceSynchronize();
+
+    // Copy error back to host and print
+    REAL h_error;
+    cudaMemcpy(&h_error, d_error, sizeof(REAL), cudaMemcpyDeviceToHost);
+    printf("Max error: %f\n", h_error);
+
+    // Clean up
     cudaFree(d_A);
     cudaFree(d_b);
+    cudaFree(d_x);
+    cudaFree(d_error);
     free(h_A);
     free(h_b);
+    free(h_x);
 
     return 0;
 }
