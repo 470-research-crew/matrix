@@ -21,5 +21,5 @@ cd ./RAJA-example
 make
 
 echo 'Running program'
-./raja.cpp
+./run.sh
 echo 'Success in program run'
