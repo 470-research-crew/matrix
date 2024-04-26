@@ -4,7 +4,7 @@ INC_DIR = ../RAJA-install/include
 LIB_DIR = ../RAJA-install/lib
 LIBS = -lRAJA -lm
 
-TARGETS: serial raja cuda
+TARGETS: serial raja cuda openmp
 
 all: $(TARGETS)
 
@@ -16,6 +16,9 @@ raja: raja.cpp
 
 serial: serial.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $< $(LIB)
+
+openmp: openmp.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LIB) -fopenmp
 
 .PHONY: clean
 
