@@ -4,7 +4,6 @@ if [[ ! -d RAJA-install ]]; then
   git clone --recursive https://github.com/LLNL/RAJA.git
   mkdir RAJA-build
   mkdir RAJA-install
-  mkdir RAJA-example
   echo 'Success in environment set up'
 
   # build RAJA 
@@ -19,9 +18,4 @@ fi
 # make and run program
 cd ./example
 make
-
 cd ..
-
-echo 'Running program'
-./run.sh
-echo 'Success in program run'
