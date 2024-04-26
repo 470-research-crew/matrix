@@ -17,9 +17,7 @@ if [[ ! -d RAJA-install ]]; then
 fi
 
 # make and run program
-cp ./example/raja.cpp ./RAJA-example
-cp ./example/Makefile ./RAJA-example
-cd ./RAJA-example
+cd ./example
 make
 
 cd ..
