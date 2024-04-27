@@ -40,6 +40,8 @@ typedef struct {
 /*
  * Generate a random linear system of size n.
  */
+
+/*
 void rand_system()
 {
     // allocate space for matrices
@@ -78,6 +80,52 @@ void rand_system()
         }
     }
 }
+*/
+
+void *rand_system_thread(void *arg) {
+    ThreadData *data = (ThreadData *)arg;
+    int startRow = data->startRow;
+    int endRow = data->endRow;
+    unsigned long seed = data->startRow; // Simple seed based on thread's starting row
+
+    for (int row = startRow; row < endRow; row++) {
+        int colStart = triangular_mode ? row : 0;
+        for (int col = colStart; col < n; col++) {
+            if (row != col) {
+                seed = (1103515245 * seed + 12345) % (1 << 31);
+                A[row * n + col] = (REAL)seed / (REAL)ULONG_MAX;
+            } else {
+                A[row * n + col] = n / 10.0;
+            }
+        }
+        b[row] = 0.0;
+        for (int col = 0; col < n; col++) {
+            b[row] += A[row * n + col] * 1.0; // Assuming the intended solution is x = 1 vector
+        }
+    }
+
+    pthread_exit(NULL);
+}
+
+void rand_system_parallel() {
+    pthread_t *threads = new pthread_t[numThreads];
+    ThreadData *data = new ThreadData[numThreads];
+    int chunkSize = (n + numThreads - 1) / numThreads;
+
+    for (int t = 0; t < numThreads; t++) {
+        data[t].startRow = t * chunkSize;
+        data[t].endRow = std::fmin((t + 1) * chunkSize, n);
+        pthread_create(&threads[t], NULL, rand_system_thread, (void *)&data[t]);
+    }
+
+    for (int t = 0; t < numThreads; t++) {
+        pthread_join(threads[t], NULL);
+    }
+
+    delete[] threads;
+    delete[] data;
+}
+
 
 /*
  * Reads a linear system of equations from a file in the form of an augmented
@@ -285,8 +333,18 @@ int main(int argc, char *argv[])
         read_system(argv[optind]);
     } else {
         n = (int)size;
-        rand_system();
+        // Allocate memory for A, b, and x
+        A = (REAL*)calloc(n * n, sizeof(REAL));
+        b = (REAL*)calloc(n, sizeof(REAL));
+        x = (REAL*)calloc(n, sizeof(REAL));
+        // Check for memory allocation success
+        if (A == NULL || b == NULL || x == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+        rand_system_parallel();  // Initialize the system in parallel
     }
+
     STOP_TIMER(init)
 
     if (debug_mode) {
