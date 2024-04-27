@@ -30,3 +30,15 @@ export OMP_NUM_THREADS=$num_threads
 echo "Starting RAJA program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
 srun ./example/raja $matrix_size
 echo "RAJA program has completed."
+
+echo "Starting Pthread program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
+srun ./example/pthread $matrix_size
+echo "Pthread program has completed."
+
+echo "Starting OpenMP program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
+srun ./example/openmp $matrix_size
+echo "OpenMP program has completed."
+
+echo "Starting Serial program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
+srun ./example/serial $matrix_size
+echo "Serial program has completed."
