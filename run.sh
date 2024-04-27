@@ -42,3 +42,7 @@ echo "OpenMP program has completed."
 echo "Starting Serial program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
 srun ./example/serial $matrix_size
 echo "Serial program has completed."
+
+echo "Starting Cuda program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
+srun --gres=gpu ./example/cuda $matrix_size
+echo "Cuda program has completed."
