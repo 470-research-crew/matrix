@@ -27,4 +27,4 @@ openmp: openmp.cpp
 .PHONY: clean
 
 clean:
-	rm -f $(TARGETS)
+	rm -f out/*
