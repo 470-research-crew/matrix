@@ -37,6 +37,15 @@ typedef struct {
     int pivot;
 } ThreadData;
 
+pthread_mutex_t mutex_sum;
+REAL *partial_sums;
+
+typedef struct {
+    int startCol;
+    int endCol;
+    int row;
+} BackSubData;
+
 /*
  * Prints a matrix to standard output in a fixed-width format.
  */
@@ -186,22 +195,56 @@ void gaussian_elimination() {
     free(data);
 }
 
-
-/*
- * Performs backwards substitution on the linear system.
- * (row-oriented version)
- */
-void back_substitution_row()
-{
-    REAL tmp;
-    for (int row = n-1; row >= 0; row--) {
-        tmp = b[row];
-        for (int col = row+1; col < n; col++) {
-            tmp += -A[row*n + col] * x[col];
-        }
-        x[row] = tmp / A[row*n + row];
+void *back_substitution_thread(void *arg) {
+    BackSubData *data = (BackSubData *)arg;
+    REAL sum = 0.0;
+    for (int col = data->startCol; col < data->endCol; col++) {
+        sum += A[data->row * n + col] * x[col];
     }
+
+    pthread_mutex_lock(&mutex_sum);
+    partial_sums[data->row] += sum;
+    pthread_mutex_unlock(&mutex_sum);
+
+    pthread_exit(NULL);
 }
+
+void back_substitution_row() {
+    pthread_t *threads = (pthread_t *)malloc(numThreads * sizeof(pthread_t));
+    BackSubData *thread_data = (BackSubData *)malloc(numThreads * sizeof(BackSubData));
+    partial_sums = (REAL *)calloc(n, sizeof(REAL));
+
+    pthread_mutex_init(&mutex_sum, NULL);
+
+    for (int row = n-1; row >= 0; row--) {
+        int remainingCols = n - row - 1;
+        int colsPerThread = remainingCols / numThreads;
+        int extra = remainingCols % numThreads;
+
+        int startCol = row + 1;
+        for (int t = 0; t < numThreads; t++) {
+            thread_data[t].row = row;
+            thread_data[t].startCol = startCol;
+            thread_data[t].endCol = startCol + colsPerThread + (t < extra ? 1 : 0);
+            pthread_create(&threads[t], NULL, back_substitution_thread, &thread_data[t]);
+            startCol = thread_data[t].endCol;
+        }
+
+        for (int t = 0; t < numThreads; t++) {
+            pthread_join(threads[t], NULL);
+        }
+
+        // Calculate x[row] after all threads are done updating partial sums
+        x[row] = (b[row] - partial_sums[row]) / A[row * n + row];
+        partial_sums[row] = 0.0;
+    }
+
+    free(threads);
+    free(thread_data);
+    free(partial_sums);
+    pthread_mutex_destroy(&mutex_sum);
+}
+
 
 /*
  * Performs backwards substitution on the linear system.
