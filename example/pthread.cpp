@@ -38,55 +38,23 @@ typedef struct {
 } ThreadData;
 
 /*
- * Generate a random linear system of size n.
+ * Prints a matrix to standard output in a fixed-width format.
  */
-
-/*
-void rand_system()
+void print_matrix(REAL *mat, int rows, int cols)
 {
-    // allocate space for matrices
-    A = (REAL*)calloc(n*n, sizeof(REAL));
-    b = (REAL*)calloc(n,   sizeof(REAL));
-    x = (REAL*)calloc(n,   sizeof(REAL));
-
-    // verify that memory allocation succeeded
-    if (A == NULL || b == NULL || x == NULL) {
-        printf("Unable to allocate memory for linear system\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // initialize pseudorandom number generator
-    // (see https://en.wikipedia.org/wiki/Linear_congruential_generator)
-    unsigned long seed = 0;
-
-    // generate random matrix entries
-    for (int row = 0; row < n; row++) {
-        int col = triangular_mode ? row : 0;
-        for (; col < n; col++) {
-            if (row != col) {
-                seed = (1103515245*seed + 12345) % (1<<31);
-                A[row*n + col] = (REAL)seed / (REAL)ULONG_MAX;
-            } else {
-                A[row*n + col] = n/10.0;
-            }
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            printf("%8.1e ", mat[row*cols + col]);
         }
-    }
-
-    // generate right-hand side such that the solution matrix is all 1s
-    for (int row = 0; row < n; row++) {
-        b[row] = 0.0;
-        for (int col = 0; col < n; col++) {
-            b[row] += A[row*n + col] * 1.0;
-        }
+        printf("\n");
     }
 }
-*/
 
 void *rand_system_thread(void *arg) {
     ThreadData *data = (ThreadData *)arg;
     int startRow = data->startRow;
     int endRow = data->endRow;
-    unsigned long seed = data->startRow; // Simple seed based on thread's starting row
+    unsigned long seed = data->startRow; 
 
     for (int row = startRow; row < endRow; row++) {
         int colStart = triangular_mode ? row : 0;
@@ -100,7 +68,7 @@ void *rand_system_thread(void *arg) {
         }
         b[row] = 0.0;
         for (int col = 0; col < n; col++) {
-            b[row] += A[row * n + col] * 1.0; // Assuming the intended solution is x = 1 vector
+            b[row] += A[row * n + col] * 1.0;
         }
     }
 
@@ -167,7 +135,7 @@ void read_system(const char *fn)
             printf("Invalid matrix file format\n");
             exit(EXIT_FAILURE);
         }
-        x[row] = 0.0;     // initialize x while we're reading A and b
+        x[row] = 0.0;  
     }
     fclose(fin);
 }
@@ -179,12 +147,11 @@ void *gaussian_elimination_thread(void *arg) {
     int pivot = data->pivot;
 
     for (int row = startRow; row < endRow; row++) {
-        REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
-        A[row*n + pivot] = 0.0;
-        for (int col = pivot + 1; col < n; col++) {
-            A[row*n + col] -= A[pivot*n + col] * coeff;
+        REAL coeff = A[row * n + pivot] / A[pivot * n + pivot];
+        for (int col = pivot; col < n; col++) {
+            A[row * n + col] -= coeff * A[pivot * n + col];
         }
-        b[row] -= b[pivot] * coeff;
+        b[row] -= coeff * b[pivot];
     }
     pthread_exit(NULL);
 }
@@ -194,25 +161,31 @@ void gaussian_elimination() {
     ThreadData *data = (ThreadData *)malloc(numThreads * sizeof(ThreadData));
 
     for (int pivot = 0; pivot < n; pivot++) {
+        int rowsPerThread = (n - pivot - 1) / numThreads;
+        int extra = (n - pivot - 1) % numThreads;
+
+        int currentStartRow = pivot + 1;
         for (int t = 0; t < numThreads; t++) {
-            data[t].startRow = pivot + 1 + (n - pivot - 1) / numThreads * t;
-            data[t].endRow = pivot + 1 + (n - pivot - 1) / numThreads * (t + 1);
+            int rowsToHandle = rowsPerThread + (t < extra ? 1 : 0);
+            data[t].startRow = currentStartRow;
+            data[t].endRow = currentStartRow + rowsToHandle;
             data[t].pivot = pivot;
 
             if (pthread_create(&threads[t], NULL, gaussian_elimination_thread, (void *)&data[t])) {
                 fprintf(stderr, "Error creating thread\n");
-                exit(1);
+                exit(EXIT_FAILURE);
             }
+            currentStartRow += rowsToHandle;
         }
 
         for (int t = 0; t < numThreads; t++) {
             pthread_join(threads[t], NULL);
         }
     }
-
     free(threads);
     free(data);
 }
+
 
 /*
  * Performs backwards substitution on the linear system.
@@ -263,22 +236,9 @@ REAL find_max_error()
     return error;
 }
 
-/*
- * Prints a matrix to standard output in a fixed-width format.
- */
-void print_matrix(REAL *mat, int rows, int cols)
-{
-    for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < cols; col++) {
-            printf("%8.1e ", mat[row*cols + col]);
-        }
-        printf("\n");
-    }
-}
-
 int main(int argc, char *argv[])
 {
-    numThreads = 4; // Default number of threads
+    numThreads = 4;
 
     int c;
     while ((c = getopt(argc, argv, "dt")) != -1) {
@@ -310,8 +270,7 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
 
-        // If we got here, strtol() successfully parsed a number
-        if (*endptr != '\0') { // Not necessarily an error...
+        if (*endptr != '\0') {
             fprintf(stderr, "Further characters after number: %s\n", endptr);
             exit(EXIT_FAILURE);
         }
@@ -321,12 +280,11 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Invalid number of threads: %ld\n", val);
             exit(EXIT_FAILURE);
         }
-    } else if (argc - optind != 1) { // If there is not exactly one non-option argument
+    } else if (argc - optind != 1) {
         fprintf(stderr, "Usage: %s [-dt] <file|size> [numThreads]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    // read or generate linear system
     long int size = strtol(argv[optind], NULL, 10);
     START_TIMER(init)
     if (size == 0) {

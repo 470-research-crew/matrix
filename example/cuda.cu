@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <string.h>
+#include <time.h>
 
 #define REAL double
 
@@ -14,6 +15,17 @@
         printf("CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(e)); \
         exit(EXIT_FAILURE); \
     } \
+}
+
+REAL find_max_error(REAL* x, int n) {
+    REAL max_error = 0.0;
+    for (int i = 0; i < n; i++) {
+        REAL error = fabs(x[i] - 1.0);  // Assumes the expected solution is all ones
+        if (error > max_error) {
+            max_error = error;
+        }
+    }
+    return max_error;
 }
 
 // Function to allocate memory and initialize the matrix and vectors
@@ -89,28 +101,40 @@ void read_system(const char* filename, REAL** A, REAL** b, REAL** x, int* n) {
     fclose(file);
 }
 
-// Kernel to perform Gaussian elimination
+__device__ double atomicAddDouble(double* address, double val) {
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val + __longlong_as_double(assumed)));
+    } while (assumed != old);
+
+    return __longlong_as_double(old);
+}
+
 __global__ void gaussian_elimination_kernel(REAL *A, REAL *b, int n, int pivot) {
-    int row = blockIdx.x * blockDim.x + threadIdx.x + pivot + 1;
+    int row = threadIdx.x + pivot + 1;
+
     if (row < n) {
         REAL coeff = A[row * n + pivot] / A[pivot * n + pivot];
-        for (int col = pivot; col < n; col++) { // Update column from pivot to ensure 0 below pivot
-            A[row * n + col] -= A[pivot * n + col] * coeff;
+        for (int col = pivot; col < n; col++) {
+            A[row * n + col] -= coeff * A[pivot * n + col];
         }
-        b[row] -= b[pivot] * coeff;
+        b[row] -= coeff * b[pivot];
     }
 }
 
+
 // Kernel for backward substitution
 __global__ void back_substitution_kernel(REAL *A, REAL *b, REAL *x, int n) {
-    int row = blockDim.x * blockIdx.x + threadIdx.x;
-    if (row < n) {
-        REAL tmp = b[row];
-        for (int col = row + 1; col < n; col++) {
-            tmp -= A[row * n + col] * x[col];
-        }
-        x[row] = tmp / A[row * n + row];
+    int row = n - blockIdx.x - 1;
+
+    REAL sum = 0.0;
+    for (int col = row + 1; col < n; col++) {
+        sum += A[row * n + col] * x[col];
     }
+    x[row] = (b[row] - sum) / A[row * n + row];
 }
 
 // Timer macro definitions using CUDA events
@@ -120,16 +144,18 @@ cudaEvent_t start, stop;
 #define START_TIMER() { \
     cudaEventCreate(&start); \
     cudaEventCreate(&stop); \
-    cudaEventRecord(start, 0); \
+    cudaEventRecord(start); \
 }
 
-#define STOP_TIMER() { \
-    cudaEventRecord(stop, 0); \
+#define STOP_TIMER() ({ \
+    cudaEventRecord(stop); \
     cudaEventSynchronize(stop); \
-    cudaEventElapsedTime(&cuda_timer_start, start, stop); \
+    float milliseconds = 0; \
+    cudaEventElapsedTime(&milliseconds, start, stop); \
     cudaEventDestroy(start); \
     cudaEventDestroy(stop); \
-}
+    milliseconds / 1000.0; \
+})
 
 #define GET_TIMER() (cuda_timer_start / 1000.0) // Return in seconds
 
@@ -173,15 +199,15 @@ int main(int argc, char *argv[]) {
 
     // Determine if input is a file or a matrix size
     char* input = argv[optind];
-    int size = strtol(input, NULL, 10);
+    long int size = strtol(input, NULL, 10);
+    START_TIMER();
     if (size == 0) {
-        // Read system from file
         read_system(input, &A, &b, &x, &n);
     } else {
-        n = size;
-        // Generate random system of size n
+        n = (int)size;
         generate_random_system(&A, &b, &x, n);
     }
+    float init_time = STOP_TIMER();
 
     // Allocate device memory
     cudaMalloc(&d_A, n * n * sizeof(REAL));
@@ -194,33 +220,61 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_b, b, n * sizeof(REAL), cudaMemcpyHostToDevice);
     cudaCheckError();
 
-    int threadsPerBlock = 256; // Common number of threads per block
-
-    // Running Gaussian elimination
-    if (!triangular_mode) {
-        for (int i = 0; i < n - 1; i++) {
-            int blocks = (n - i - 1 + threadsPerBlock - 1) / threadsPerBlock;
-            gaussian_elimination_kernel<<<blocks, threadsPerBlock>>>(d_A, d_b, n, i);
-            cudaCheckError();
-        }
+    if (debug_mode) {
+        printf("Original A = \n");
+        print_matrix(A, n, n);
+        printf("Original b = \n");
+        print_matrix(b, n, 1);
     }
 
-    // Running back substitution
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
-    back_substitution_kernel<<<numBlocks, threadsPerBlock>>>(d_A, d_b, d_x, n);
-    cudaCheckError();
+    // Perform Gaussian elimination
+    START_TIMER();
+    if (!triangular_mode) {
+        for (int pivot = 0; pivot < n - 1; pivot++) {
+            int threadsPerBlock = n - pivot - 1; // Number of rows below the pivot
+            gaussian_elimination_kernel<<<1, threadsPerBlock>>>(d_A, d_b, n, pivot);
+            cudaDeviceSynchronize(); // Ensure completion before moving to the next pivot
+            cudaCheckError();
 
-    // Copy back the result
-    cudaMemcpy(x, d_x, n * sizeof(REAL), cudaMemcpyDeviceToHost);
-    cudaCheckError();
+            // Optionally: Copy back A and b to host to check the intermediate state
+            cudaMemcpy(A, d_A, n * n * sizeof(REAL), cudaMemcpyDeviceToHost);
+            cudaMemcpy(b, d_b, n * sizeof(REAL), cudaMemcpyDeviceToHost);
+        }
+    }
+    float gaus_time = STOP_TIMER();
 
-    // Example of how to print and check error if in debug mode
+
+    // Synchronize
+    cudaDeviceSynchronize();
+
+    // Perform back substitution
+    START_TIMER();
+    for (int i = n - 1; i >= 0; i--) {
+        REAL sum = 0;
+        for (int j = i + 1; j < n; j++) {
+            sum += A[i * n + j] * x[j];
+        }
+        x[i] = (b[i] - sum) / A[i * n + i];
+    }
+    float bsub_time = STOP_TIMER();
+
     if (debug_mode) {
-        printf("Final solution x = \n");
+        printf("Triangular A = \n");
+        print_matrix(A, n, n);
+        printf("Updated b = \n");
+        print_matrix(b, n, 1);
+        printf("Solution x = \n");
         print_matrix(x, n, 1);
     }
 
-    // Clean up
+    // Compute the maximum error
+    REAL max_error = find_max_error(x, n);
+
+    // Print results
+    printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
+       1, max_error, init_time, gaus_time, bsub_time);
+
+    // Clean up and exit
     cudaFree(d_A);
     cudaFree(d_b);
     cudaFree(d_x);
@@ -228,5 +282,5 @@ int main(int argc, char *argv[]) {
     delete[] b;
     delete[] x;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
