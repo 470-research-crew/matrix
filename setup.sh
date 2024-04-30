@@ -17,5 +17,5 @@ fi
 
 # make and run program
 cd ./example
-make
+make all
 cd ..

@@ -6,8 +6,7 @@ LIBS = -lRAJA -lm
 
 TARGETS: serial raja openmp pthread
 
-noncuda: $(TARGETS)
-all: $(TARGETS) cuda
+all: serial cuda pthread raja openmp
 
 cuda: cuda.cu
 	nvcc $(NFLAGS) -o out/$@ $< $(LIB)
