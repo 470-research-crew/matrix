@@ -4,6 +4,7 @@
 #
 #   sbatch ./run_raja.sh <matrix_size> <num_threads>
 
+
 sizes=(300 424 599 847 1197 1692 2392 3382 4782 6762 9562)
 threads=(1 2 4 8)
 serials=(1)

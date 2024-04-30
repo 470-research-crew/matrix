@@ -231,8 +231,10 @@ int main(int argc, char *argv[]) {
     START_TIMER();
     if (!triangular_mode) {
         for (int pivot = 0; pivot < n - 1; pivot++) {
-            int threadsPerBlock = n - pivot - 1; // Number of rows below the pivot
-            gaussian_elimination_kernel<<<1, threadsPerBlock>>>(d_A, d_b, n, pivot);
+            int threadsPerBlock = 256;
+            int numBlocks = (n - pivot - 1 + threadsPerBlock - 1) / threadsPerBlock;
+            gaussian_elimination_kernel<<<numBlocks, threadsPerBlock>>>(d_A, d_b, n, pivot);
+
             cudaDeviceSynchronize(); // Ensure completion before moving to the next pivot
             cudaCheckError();
 
