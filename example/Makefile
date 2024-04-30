@@ -4,9 +4,10 @@ INC_DIR = ../RAJA-install/include
 LIB_DIR = ../RAJA-install/lib
 LIBS = -lRAJA -lm
 
-TARGETS: serial raja cuda openmp pthread
+TARGETS: serial raja openmp pthread
 
-all: $(TARGETS)
+noncuda: $(TARGETS)
+all: $(TARGETS) cuda
 
 cuda: cuda.cu
 	nvcc $(NFLAGS) -o out/$@ $< $(LIB)
