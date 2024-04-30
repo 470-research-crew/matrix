@@ -14,7 +14,7 @@ for t in "${serials[@]}"; do
     export OMP_NUM_THREADS=$t
     for s in "${sizes[@]}"; do
         echo "Size: $s, Threads: $t"
-        ./example/serial $s
+        ./example/out/serial $s
     done
 done
 
@@ -25,7 +25,7 @@ for t in "${threads[@]}"; do
     export OMP_NUM_THREADS=$t
     for s in "${sizes[@]}"; do
         echo "Size: $s, Threads: $t"
-        ./example/openmp $s
+        ./example/out/openmp $s
     done
 done
 
@@ -36,7 +36,7 @@ for t in "${threads[@]}"; do
     export OMP_NUM_THREADS=$t
     for s in "${sizes[@]}"; do
         echo "Size: $s, Threads: $t"
-        ./example/pthread $s
+        ./example/out/pthread $s
     done
 done
 
@@ -47,6 +47,6 @@ for t in "${threads[@]}"; do
     export OMP_NUM_THREADS=$t
     for s in "${sizes[@]}"; do
         echo "Size: $s, Threads: $t"
-        ./example/raja $s
+        ./example/out/raja $s
     done
 done

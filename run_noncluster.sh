@@ -28,17 +28,17 @@ fi
 export OMP_NUM_THREADS=$num_threads
 
 echo "Starting RAJA program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
-./example/raja $matrix_size
+./example/out/raja $matrix_size
 echo "RAJA program has completed."
 
 echo "Starting Pthread program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
-./example/pthread $matrix_size
+./example/out/pthread $matrix_size
 echo "Pthread program has completed."
 
 echo "Starting OpenMP program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
-./example/openmp $matrix_size
+./example/out/openmp $matrix_size
 echo "OpenMP program has completed."
 
 echo "Starting Serial program with matrix size $matrix_size using $OMP_NUM_THREADS threads..."
-./example/serial $matrix_size
+./example/out/serial $matrix_size
 echo "Serial program has completed."

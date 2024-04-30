@@ -27,7 +27,7 @@ programs=(serial openmp pthread raja)
 
 for program in "${programs[@]}"; do
     echo "Running $program in debug mode..."
-    output=$(./example/$program -d $MATRIX_FILE)
+    output=$(./example/out/$program -d $MATRIX_FILE)
     echo "$output"
 
     mapfile -t xs < <(echo "$output" | awk '/Solution x =/ { getline; print $1; getline; print $1; getline; print $1}')

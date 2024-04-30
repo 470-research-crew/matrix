@@ -9,19 +9,19 @@ TARGETS: serial raja cuda openmp pthread
 all: $(TARGETS)
 
 cuda: cuda.cu
-	nvcc $(NFLAGS) -o $@ $< $(LIB)
+	nvcc $(NFLAGS) -o out/$@ $< $(LIB)
 
 pthread: pthread.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LIB) -lpthread
+	$(CXX) $(CXXFLAGS) -o out/$@ $< $(LIB) -lpthread
 
 raja: raja.cpp
-	$(CXX) $(CXXFLAGS) -I$(INC_DIR) -o $@ $^ -L$(LIB_DIR) $(LIBS)
+	$(CXX) $(CXXFLAGS) -I$(INC_DIR) -o out/$@ $^ -L$(LIB_DIR) $(LIBS)
 
 serial: serial.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LIB)
+	$(CXX) $(CXXFLAGS) -o out/$@ $< $(LIB)
 
 openmp: openmp.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LIB) -fopenmp
+	$(CXX) $(CXXFLAGS) -o out/$@ $< $(LIB) -fopenmp
 
 .PHONY: clean
 

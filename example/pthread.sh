@@ -9,4 +9,4 @@ num_threads="$2"
 
 export OMP_NUM_THREADS=$num_threads
 
-srun ./pthread matrix.txt -d
+srun out/pthread matrix.txt -d
