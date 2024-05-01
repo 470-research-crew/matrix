@@ -7,7 +7,7 @@ LIBS = -lRAJA -lm
 NFLAGS = -ccbin $(CC) -g -O3
 LIB = -lm
 
-TARGETS: serial raja openmp pthread
+TARGETS: serial raja openmp pthread cuda
 
 all: serial cuda pthread raja openmp
 
