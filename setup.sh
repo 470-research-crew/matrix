@@ -15,7 +15,7 @@ if [[ ! -d RAJA-install ]]; then
   cd ../
 fi
 
-# make and run program
+# make program
 cd ./example
 make all
 cd ..

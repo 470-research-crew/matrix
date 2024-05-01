@@ -1,8 +1,11 @@
 CXX = g++
+CC = gcc
 CXXFLAGS = -std=c++14 -O3 -Wall -Wextra -fopenmp
 INC_DIR = ../RAJA-install/include
 LIB_DIR = ../RAJA-install/lib
 LIBS = -lRAJA -lm
+NFLAGS = -ccbin $(CC) -g -O3
+LIB = -lm
 
 TARGETS: serial raja openmp pthread
 
