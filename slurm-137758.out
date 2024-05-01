@@ -1,0 +1,18 @@
+Serial:
+Size: 300, Threads: 1
+Nthreads= 1  ERR= 8.8e-15  INIT:   0.0010s  GAUS:   0.0034s  BSUB:   0.0000s
+Size: 424, Threads: 1
+Nthreads= 1  ERR= 1.4e-14  INIT:   0.0020s  GAUS:   0.0098s  BSUB:   0.0001s
+Size: 599, Threads: 1
+Nthreads= 1  ERR= 1.6e-14  INIT:   0.0041s  GAUS:   0.0302s  BSUB:   0.0002s
+Size: 847, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0065s  GAUS:   0.0843s  BSUB:   0.0003s
+Size: 1197, Threads: 1
+Nthreads= 1  ERR= 2.7e-14  INIT:   0.0129s  GAUS:   0.2382s  BSUB:   0.0007s
+Size: 1692, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0250s  GAUS:   0.9217s  BSUB:   0.0016s
+Size: 2392, Threads: 1
+Nthreads= 1  ERR= 4.0e-14  INIT:   0.0496s  GAUS:   3.3208s  BSUB:   0.0031s
+Size: 3382, Threads: 1
+Nthreads= 1  ERR= 4.6e-14  INIT:   0.0983s  GAUS:   9.8948s  BSUB:   0.0062s
+Size: 4782, Threads: 1
