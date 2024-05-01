@@ -1,0 +1,67 @@
+Serial:
+Size: 300, Threads: 1
+Nthreads= 1  ERR= 8.8e-15  INIT:   0.0010s  GAUS:   0.0035s  BSUB:   0.0001s
+Size: 424, Threads: 1
+Nthreads= 1  ERR= 1.4e-14  INIT:   0.0020s  GAUS:   0.0097s  BSUB:   0.0001s
+Size: 599, Threads: 1
+Nthreads= 1  ERR= 1.6e-14  INIT:   0.0033s  GAUS:   0.0302s  BSUB:   0.0002s
+Size: 847, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0074s  GAUS:   0.0852s  BSUB:   0.0004s
+Size: 1197, Threads: 1
+Nthreads= 1  ERR= 2.7e-14  INIT:   0.0123s  GAUS:   0.2412s  BSUB:   0.0007s
+Size: 1692, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0252s  GAUS:   0.9285s  BSUB:   0.0015s
+Size: 2392, Threads: 1
+Nthreads= 1  ERR= 4.0e-14  INIT:   0.0497s  GAUS:   3.3630s  BSUB:   0.0031s
+Size: 3382, Threads: 1
+Nthreads= 1  ERR= 4.6e-14  INIT:   0.0989s  GAUS:   9.9371s  BSUB:   0.0063s
+Size: 4782, Threads: 1
+Nthreads= 1  ERR= 5.1e-14  INIT:   0.1981s  GAUS:  28.2018s  BSUB:   0.0123s
+Size: 6762, Threads: 1
+Nthreads= 1  ERR= 6.3e-14  INIT:   0.3952s  GAUS:  79.1064s  BSUB:   0.0242s
+Size: 9562, Threads: 1
+Nthreads= 1  ERR= 9.5e-14  INIT:   0.7904s  GAUS: 219.9677s  BSUB:   0.0481s
+Size: 300, Threads: 1
+Nthreads= 1  ERR= 8.8e-15  INIT:   0.0010s  GAUS:   0.0035s  BSUB:   0.0000s
+Size: 424, Threads: 1
+Nthreads= 1  ERR= 1.4e-14  INIT:   0.0020s  GAUS:   0.0099s  BSUB:   0.0001s
+Size: 599, Threads: 1
+Nthreads= 1  ERR= 1.6e-14  INIT:   0.0039s  GAUS:   0.0305s  BSUB:   0.0002s
+Size: 847, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0071s  GAUS:   0.0854s  BSUB:   0.0003s
+Size: 1197, Threads: 1
+Nthreads= 1  ERR= 2.7e-14  INIT:   0.0128s  GAUS:   0.2427s  BSUB:   0.0007s
+Size: 1692, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0264s  GAUS:   0.9440s  BSUB:   0.0015s
+Size: 2392, Threads: 1
+Nthreads= 1  ERR= 4.0e-14  INIT:   0.0498s  GAUS:   3.3629s  BSUB:   0.0031s
+Size: 3382, Threads: 1
+Nthreads= 1  ERR= 4.6e-14  INIT:   0.0991s  GAUS:   9.9655s  BSUB:   0.0062s
+Size: 4782, Threads: 1
+Nthreads= 1  ERR= 5.1e-14  INIT:   0.1984s  GAUS:  28.2941s  BSUB:   0.0123s
+Size: 6762, Threads: 1
+Nthreads= 1  ERR= 6.3e-14  INIT:   0.3953s  GAUS:  79.0994s  BSUB:   0.0242s
+Size: 9562, Threads: 1
+Nthreads= 1  ERR= 9.5e-14  INIT:   0.7660s  GAUS: 199.8087s  BSUB:   0.0464s
+Size: 300, Threads: 1
+Nthreads= 1  ERR= 8.8e-15  INIT:   0.0010s  GAUS:   0.0034s  BSUB:   0.0000s
+Size: 424, Threads: 1
+Nthreads= 1  ERR= 1.4e-14  INIT:   0.0020s  GAUS:   0.0099s  BSUB:   0.0001s
+Size: 599, Threads: 1
+Nthreads= 1  ERR= 1.6e-14  INIT:   0.0033s  GAUS:   0.0304s  BSUB:   0.0002s
+Size: 847, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0069s  GAUS:   0.0855s  BSUB:   0.0003s
+Size: 1197, Threads: 1
+Nthreads= 1  ERR= 2.7e-14  INIT:   0.0139s  GAUS:   0.2423s  BSUB:   0.0007s
+Size: 1692, Threads: 1
+Nthreads= 1  ERR= 2.6e-14  INIT:   0.0251s  GAUS:   0.9374s  BSUB:   0.0015s
+Size: 2392, Threads: 1
+Nthreads= 1  ERR= 4.0e-14  INIT:   0.0500s  GAUS:   3.3610s  BSUB:   0.0031s
+Size: 3382, Threads: 1
+Nthreads= 1  ERR= 4.6e-14  INIT:   0.0991s  GAUS:   9.9546s  BSUB:   0.0062s
+Size: 4782, Threads: 1
+Nthreads= 1  ERR= 5.1e-14  INIT:   0.1981s  GAUS:  28.2968s  BSUB:   0.0123s
+Size: 6762, Threads: 1
+Nthreads= 1  ERR= 6.3e-14  INIT:   0.3830s  GAUS:  72.0737s  BSUB:   0.0234s
+Size: 9562, Threads: 1
+Nthreads= 1  ERR= 9.5e-14  INIT:   0.7682s  GAUS: 200.1317s  BSUB:   0.0466s
