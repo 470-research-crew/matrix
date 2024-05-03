@@ -60,11 +60,11 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        file >> n; // Read the size of the matrix
+        file >> n;
 
         A.resize(n * n);
         b.resize(n);
-        x.resize(n, 0.0); // Initialize x with zeros
+        x.resize(n, 0.0);
 
         for (int row = 0; row < n; ++row) {
             for (int col = 0; col < n; ++col) {
