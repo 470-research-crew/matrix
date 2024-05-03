@@ -30,7 +30,7 @@ programs=(serial openmp pthread raja cuda)
 
 for program in "${programs[@]}"; do
     echo "Running $program in debug mode..."
-    output=$(srun ./example/$program -d $MATRIX_FILE)
+    output=$(srun ./example/out/$program -d $MATRIX_FILE)
     echo "$output"
 
     # Extract and round the values of x from the output
