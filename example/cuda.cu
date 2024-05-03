@@ -43,15 +43,15 @@ void generate_random_system(REAL** A, REAL** b, REAL** x, int n) {
         (*b)[i] = 0.0; // Initialize b[i] to zero for accumulation
         for (int j = 0; j < n; j++) {
             if (i == j) {
-                (*A)[i * n + j] = n / 10.0; // Set diagonal dominance
+                (*A)[i * n + j] = n / 10.0;
             } else {
                 (*A)[i * n + j] = (REAL)rand() / RAND_MAX; // Random double between 0.0 and 1.0
             }
-            (*b)[i] += (*A)[i * n + j]; // Accumulate to form b[i]
+            (*b)[i] += (*A)[i * n + j];
         }
     }
 
-    // Optionally initialize x to some default values (e.g., zeros)
+    // Optionally initialize x to some default values
     for (int i = 0; i < n; i++) {
         (*x)[i] = 0.0; // Not necessary for solving, but good for initialization
     }
@@ -75,7 +75,7 @@ void read_system(const char* filename, REAL** A, REAL** b, REAL** x, int* n) {
     // Allocate memory for A, b, x
     *A = new REAL[*n * *n];
     *b = new REAL[*n];
-    *x = new REAL[*n]; // This will be the solution vector; initialized later
+    *x = new REAL[*n];
 
     // Read the matrix A and vector b
     for (int i = 0; i < *n; i++) {
