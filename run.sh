@@ -2,7 +2,7 @@
 #
 # To run the RAJA program on the cluster:
 #
-#   sbatch ./run_raja.sh <matrix_size> <num_threads>
+# sbatch ./run_raja.sh <matrix_size> <num_threads>
 
 # Check for required arguments
 if [ $# -ne 2 ]; then
