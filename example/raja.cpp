@@ -60,7 +60,7 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        file >> n; // Read the size of the matrix
+        file >> n;
 
         A.resize(n * n);
         b.resize(n);
